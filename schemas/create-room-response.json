@@ -1,0 +1,30 @@
+{
+    "title": "Create Room Response",
+    "type": "object",
+    "properties": {
+        "comand": {
+            "type": "string",
+            "const": "create-room-response"
+        },
+        "capabilities": {
+            "type": "list",
+            "items": "string"
+        },
+        "server-agent": {
+            "type": "string"
+        },
+        "status": {
+            "type": "number"
+        },
+        "status-message": {
+            "type": "string"
+        },
+        "room-code": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[A-Z]+$"
+        }
+    },
+    "required": ["command", "capabilities", "status"]
+}

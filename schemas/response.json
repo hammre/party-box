@@ -1,0 +1,16 @@
+{
+    "title": "General response",
+    "properties": {
+        "command": {
+            "type": "string",
+            "enum": [
+                "join-room-response",
+                "create-room-response"
+            ]
+        },
+        "status": {
+            "type": "number"
+        }
+    },
+    "required": ["command", "status"]
+}

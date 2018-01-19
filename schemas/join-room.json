@@ -1,0 +1,29 @@
+{
+    "title": "Join Room",
+    "properties": {
+        "command": {
+            "type": "string",
+            "const": "join-room"
+        },
+        "user-agent": {
+            "type": "string"
+        },
+        "capabilities": {
+            "type": "list",
+            "items": {
+                "type": "string"
+            }
+        },
+        "participant-name": {
+            "type": "string",
+            "maxLength": 30
+        },
+        "room-code": {
+            "type":"string",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[A-Z]+$"
+        }
+    },
+    "required": ["command", "participant-name", "room-code"]
+}

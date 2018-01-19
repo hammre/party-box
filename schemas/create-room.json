@@ -1,0 +1,22 @@
+{
+    "title": "Create Room",
+    "type": "object",
+    "properties": {
+        "comand": {
+            "type": "string",
+            "const": "create-room"
+        },
+        "capabilities": {
+            "type": "list",
+            "items": "string"
+        },
+        "user-agent": {
+            "type": "string"
+        },
+        "participant-name": {
+            "type": "string",
+            "maxLength": 30
+        }
+    },
+    "required": ["command", "capabilities"]
+}

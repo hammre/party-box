@@ -1,0 +1,32 @@
+{
+    "title": "Join Room Response",
+    "properties": {
+        "command": {
+            "type": "string",
+            "const": "join-room-response"
+        },
+        "server-agent": {
+            "type": "string"
+        },
+        "creator-agent": {
+            "type": "string"
+        },
+        "capabilities": {
+            "type": "list",
+            "items": {
+                "type": "string"
+            }
+        },
+        "status": {
+            "type": "number"
+        },
+        "status-message": {
+            "type": "string"
+        },
+        "creator": {
+            "type": "string",
+            "maxLength": 30
+        }
+    },
+    "required": ["command", "status", "creator"]
+}

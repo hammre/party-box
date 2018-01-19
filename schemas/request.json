@@ -1,0 +1,18 @@
+{
+    "title": "General request",
+    "properties": {
+        "command": {
+            "type": "string",
+            "enum": [
+                "create-room",
+                "create-room-response",
+                "join-room",
+                "join-room-response",
+                "broadcast-message",
+                "participant-message",
+                "participant-status"
+            ]
+        }
+    },
+    "required": ["command"]
+}

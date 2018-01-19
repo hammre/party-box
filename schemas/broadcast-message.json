@@ -1,0 +1,20 @@
+{
+    "title": "Broadcast Message",
+    "properties": {
+        "command": {
+            "type": "string",
+            "const": "broadcast-message"
+        },
+        "room-code": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[A-Z]+$"
+        },
+        "from": {
+            "type": "string",
+            "maxLength": 30
+        }
+    },
+    "required": ["command", "room-code"]
+}

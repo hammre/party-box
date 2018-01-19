@@ -1,0 +1,26 @@
+{
+    "title": "Participant Status",
+    "properties": {
+        "command": {
+            "type": "string",
+            "const": "participant-status",
+        "participant-name": {
+            "type": "string",
+            "maxLength": 30
+        },
+        "room-code": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[A-Z]+$"
+        },
+        "presence": {
+            "type": "string",
+            "enum": [
+                "connected",
+                "disconnected"
+            ]
+        }
+    },
+    "required": ["command", "room-code", "participant-name", "presence"]
+}
