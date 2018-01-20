@@ -4,13 +4,11 @@
 import websocket
 import pprint
 import json
+from messages import CreateRoomMessage
 s = websocket.WebSocket()
 s.connect("ws://localhost:9000")
-s.send(json.dumps({
-    "command": "create-room",
-    "user-agent": "Test room creator",
-    "participant-name": "TestRoom",
-    "capabilities": []}).encode('utf-8'))
+m = CreateRoomMessage([], name="TestRoom", user_agent="Test Room Creator")
+s.send(m.encode())
 while True:
     try:
         pprint.pprint(json.loads(s.recv()))

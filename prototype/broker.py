@@ -5,7 +5,17 @@ import random
 
 from autobahn.twisted.websocket import WebSocketServerProtocol
 
+from messages import JoinRoomResponseSuccess, \
+                     JoinRoomResponseFailure, \
+                     CreateRoomResponseSuccess, \
+                     CreateRoomResponseFailure, \
+                     ParticipantStatusMessage
+
 class Broker:
+    server_agent = "Prototype Broker"
+    client_capabilities = ['multi-choice']
+    broker_capabilities = []
+
     def __init__(self):
         self.rooms = {}
 
@@ -21,7 +31,10 @@ class Broker:
 
     def generate_room_code(self):
         alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        return ''.join( random.choice(alphabet) for i in range(4) )
+        code = None
+        while code is  None or code in self.rooms:
+            code = ''.join( random.choice(alphabet) for i in range(4) )
+        return code
 
     def disconnected(self, connection):
         if connection.participant is not None and connection.participant.room is not None:
@@ -36,95 +49,126 @@ class Broker:
             if 'participant-name' in data:
                 creator_name = data['participant-name']
             else:
-                creator_name = "UnknownCreator"
+                creator_name = "RoomCreator"
 
             code = self.generate_room_code()
 
-            if 'capabilities' not in data or len(data['capabilities']) > 0:
-                response = {'command': 'create-room-response',
-                        'status': 400,
-                        'server-agent': 'Prototype Broker',
-                        'status-message': 'Room capabilities were not specified, or not supported.',
-                        'capabilities': [], # For now, support no capabilities.
-                        }
-                connection.sendMessage(json.dumps(response).encode('utf-8'))
+            if 'capabilities' not in data:
+                response = CreateRoomResponseFailure(400, 
+                    "Room capabilities were not specified.", 
+                    self.client_capabilities, server_agent=self.server_agent)
+                connection.sendMessage(response.encode())
                 return
 
-            response = {'command': 'create-room-response',
-                    'status': 0,
-                    'server-agent': "Prototype Broker",
-                    'status-message': 'Room created successfully',
-                    'room-code': code}
+            for cap in data['capabilities']:
+                if cap not in self.client_capabilities and cap not in self.broker_capabilities:
+                    response = CreateRoomResponseFailure(405,
+                            "Room capability {} not supported by clients (or broker).".format(cap),
+                            self.client_capabilities, server_agent=self.server_agent)
+                    connection.sendMessage(response_encode())
+                    return
+
+            response = CreateRoomResponseSuccess(code, data['capabilities'], server_agent=self.server_agent)
 
             creator = Participant(creator_name, connection)
             self.rooms[code] = Room(code, creator, data['capabilities'])
 
-            connection.sendMessage(json.dumps(response).encode('utf-8'))
-            print("Room {} created ({})".format(code, data.get("user-agent", None)))
+            connection.sendMessage(response.encode())
+            print("Room {} created by \"{}\" ({}) capabilities: {}".format(
+                code, creator_name, data.get("user-agent", None), data['capabilities']))
         except Exception as e:
             print("Error processing create-room request: {}".format(e))
-            response = {"command": 'create-room-response',
-                    "capabilities": [],
-                    "server-agent": "Prototype Broker",
-                    "status": 500,
-                    "status-message": str(e) }
-            connection.sendMessage(json.dumps(response).encode('utf-8'))
+            response = CreateRoomResponseFailure(500, str(e), self.client_capabilities, server_agent=self.server_agent)
+            connection.sendMessage(response.encode())
 
 
     def join_room(self, connection, data): 
         try:
             code = data.get('room-code', None)
             if code is None or code not in self.rooms:
-                connection.sendMessage(json.dumps({
-                    "command": "join-room-response",
-                    "status": 404,
-                    "status-message": "No room with that code exists.",
-                    "creator": "UnknownCreator"}).encode('utf-8'))
+                connection.sendMessage(JoinRoomResponseFailure(404,
+                    "No room with that code exists").encode())
                 return
 
             room = self.rooms[code]
 
             participant_name = data.get('participant-name', None)
             if participant_name is None:
-                connection.sendMessage(json.dumps({
-                    "command": "join-room-response",
-                    "status": 400,
-                    "status-message": "No name provided when joining room.",
-                    "creator": "UnknownCreator"}).encode('utf-8'))
+                connection.sendMessage(JoinRoomResponseFailure(400,
+                    "No name provided when joining room.").encode())
                 return
+
+            capabilities = data.get('capabilities', None)
+            if capabilities is not None:
+                for cap in room.capabilities:
+                    if cap not in capabilities:
+                        connection.sendMessage(JoinRoomResponseFailure(405,
+                            "This client does not support capability {}, refuse to join room {}".format(
+                                cap, code), server_agent=self.server_agent, capabilities=room.capabilities).encode())
+                        return
+
 
             participant = Participant(participant_name, connection)
             try:
                 room.add_participant(participant)
                 room.broadcast_status(participant, 'connected')
-                response = {"command": "join-room-response",
-                        "creator": room.creator.name,
-                        "status": 0,
-                        "status-message": "Joined {}".format(code)}
-                connection.sendMessage(json.dumps(response).encode('utf-8'))
+                
+                response = JoinRoomResponseSuccess(room.creator.name,
+                        capabilities=room.capabilities, server_agent=self.server_agent)                
+                connection.sendMessage(response.encode())
 
             except Exception as e:
                 print("Error adding participant: {}".format(e))
-                response = {"command": 'join-room-response',
-                        "creator": "UnknownCreator",
-                        "status": 500,
-                        "status-message": str(e) }
-                connection.sendMessage(json.dumps(response).encode('utf-8'))
+                response = JoinRoomResponseFailure(500, str(e), server_agent=self.server_agent)
+                connection.sendMessage(response.encode())
                 return
 
         except Exception as e:
             print("Error processing join-room request: {}".format(e))
-            response = {"command": 'join-room-response',
-                    "creator": "UnknownCreator",
-                    "status": 500,
-                    "status-message": str(e) }
-            connection.sendMessage(json.dumps(response).encode('utf-8'))
+            response = JoinRoomResponseFailure(500, str(e), server_agent=self.server_agent)
+            connection.sendMessage(response.encode())
+
+    def participant_message(self, connection, data):
+        try:
+            code = data['room-code']
+            if code not in self.rooms:
+                print("Error, room {} does not exist".format(code))
+                return
+
+            room = self.rooms[code]
+
+            sender = None
+            recipient = None
+            for p in room.participants.values():
+                if p.connection is connection:
+                    sender = p
+                elif p.name == data['participant-name']:
+                    recipient = p
+
+            if sender is None or recipient is None:
+                print("Error, room {} could not find participants for message delivery".format(code))
+                return
+
+            if 'from' in data:
+                if sender.name != data['from']:
+                    print("Error, sender {} in room {} tried to impersonate {}".format(sender.name, code, data['from']))
+                    return
+            else:
+                data['from'] = sender.name
+
+            recipient.connection.sendMessage( 
+                    json.dumps(data, ensure_ascii=False).encode('utf-8')
+            )
+
+        except Exception as e:
+            print("Error processing participant-message: {}".format(e))
 
 
 
 Broker.commands = {
     'create-room':  Broker.create_room,
-    'join-room': Broker.join_room
+    'join-room': Broker.join_room,
+    'participant-message': Broker.participant_message,
 }
 
 class Room:
