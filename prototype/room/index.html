@@ -28,9 +28,11 @@
         document.getElementById("title").textContent = title;
         document.getElementById("top_title").textContent = title;
         document.getElementById("welcome").textContent = "Welcome " + nickname + "!";
+
+        var ws_uri = 'ws://' + window.location.hostname + "/ws";
        
 
-        var socket = new WebSocket("ws://localhost:9000/ws");
+        var socket = new WebSocket(ws_uri);
 
         function log_object(o, msg) {
             var log = document.getElementById("eventlog");
