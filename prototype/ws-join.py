@@ -6,7 +6,7 @@ import sys
 import json
 from messages import JoinRoomMessage
 s = websocket.WebSocket()
-s.connect("ws://localhost:9000")
+s.connect("ws://localhost:9000/ws")
 m = JoinRoomMessage(sys.argv[2], sys.argv[1], user_agent="Test Room Joiner",
         capabilities=[])
 s.send(m.encode())

@@ -74,6 +74,10 @@ It is usually the case that the Broker knows what Capabilities are supported by
 the Client that it serves, and this allows the Broker to reject an attempt to
 create a room with capabilities that Clients will not understand.
 
+Capabilities can be 'optional', in that the Capabilities of the Client can be
+communicated in the connection messages to the Game without the Game explicitly
+creating the room with those capabilities.
+
 There are two types of general-purpose messages for communication between the
 Game and the Clients: a broadcast and a participant-directed message.
 

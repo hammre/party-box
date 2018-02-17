@@ -6,7 +6,7 @@ from pprint import pprint
 import json
 from messages import CreateRoomMessage, SimpleMultiChoiceQuestion
 s = websocket.WebSocket()
-s.connect("ws://localhost:9000")
+s.connect("ws://localhost:9000/ws")
 m = CreateRoomMessage(["multi-choice"], name="Quizmaster", user_agent="Multi-Choice prototype Game")
 s.send(m.encode())
 while True:

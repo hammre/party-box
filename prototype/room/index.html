@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title id="title">Room </title>
+    </head>
+    <body>
+        <h1 id="top_title">Room</h1>
+        <p id="welcome">Welcome name!</p>
+        <div id="container"></div>
+        <div id="eventlog">
+        </div>
+    </body>
+    <script src="prettyprint.js"></script>
+    <script>
+    if(window.location.hash) {
+        var hash = window.location.hash;
+        hash = hash.substring(1);
+        var parts = hash.split(';');
+        var fragdata = {};
+        for(var i in parts) {
+            var kv = parts[i].split(':');
+            fragdata[kv[0]] = kv[1];
+        }
+        console.log(fragdata);
+        var title = "Room " + fragdata['code'];
+        var nickname = fragdata['nick'];
+    
+        document.getElementById("title").textContent = title;
+        document.getElementById("top_title").textContent = title;
+        document.getElementById("welcome").textContent = "Welcome " + nickname + "!";
+       
+
+        var socket = new WebSocket("ws://localhost:9000/ws");
+
+        function log_object(o, msg) {
+            var log = document.getElementById("eventlog");
+            var entry = document.createElement("div");
+            entry.setAttribute("class", "logentry");
+            if(msg) {
+                var msgnode = document.createTextNode(msg);
+                entry.appendChild(msgnode);
+            }
+            entry.appendChild(prettyPrint(o));
+            log.appendChild(entry);
+        }
+
+
+        function onOpen(e) {
+            log_object(e, "Websocket Open"); 
+            socket.send( JSON.stringify({"command":"join-room", 
+                                         "user-agent": "room 0.0", 
+                                         "participant-name": fragdata['nick'], 
+                                         "room-code": fragdata['code']}) );
+        }
+
+        function choose_answer(qid, answer_id) {
+            socket.send(JSON.stringify({
+                "command":"participant-message",
+                "participant-name": "Quizmaster",
+                "room-code": fragdata['code'],
+                "question-identifier": qid,
+                "selection": {
+                    "answer-identifier": answer_id
+                }
+            }));
+        }
+
+        function onMessage(e) {
+            var msg = JSON.parse(e.data);
+            log_object(msg, "Websocket RECV");
+
+            if(msg.command == "participant-message") {
+                if(msg['question-identifier']) {
+                    var q = document.createElement("div");
+                    q.setAttribute("class", "question");
+                    var p = document.createElement("div");
+                    p.textContent = msg['prompt'];
+                    q.appendChild(p);
+
+                    for(var i in msg['choices']) {
+                        var a = document.createElement("div");
+                        a.textContent = msg['choices'][i]['label'];
+                        a.setAttribute("data-answer-id", msg['choices'][i]['answer-identifier']);
+                        a.onclick = function(e) {
+                            choose_answer(msg['question-identifier'], 
+                                msg['choices'][i]['answer-identifier']);
+                            var c = document.getElementById('container');
+                            c.innerHTML = null;
+                        }
+                        q.appendChild(a);
+                    }
+                    
+                    var c = document.getElementById("container");
+                    c.appendChild(q);
+                }
+                
+            }
+
+        }
+        socket.onmessage =  onMessage;
+        socket.onopen =  onOpen;
+
+        
+    };
+    </script>
+</html>

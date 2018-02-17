@@ -1,0 +1,10 @@
+{
+    "title": "Static Message",
+    "properties": {
+        "static-message": {
+            "type": "string",
+            "maxLength": 1000
+        }
+    },
+    "required": ["static-message"]
+}

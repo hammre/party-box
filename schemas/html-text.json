@@ -1,0 +1,11 @@
+{
+    "title": "HTML Text",
+    "properties": {
+        "html-text": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+    },
+    "required": ["html-text"]
+}

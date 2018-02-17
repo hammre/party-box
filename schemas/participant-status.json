@@ -20,6 +20,12 @@
                 "connected",
                 "disconnected"
             ]
+        },
+        "capabilities": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         }
     },
     "required": ["command", "room-code", "participant-name", "presence"]

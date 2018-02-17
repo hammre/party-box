@@ -6,7 +6,7 @@ import sys
 import json
 from messages import JoinRoomMessage, SimpleMultiChoiceAnswer
 s = websocket.WebSocket()
-s.connect("ws://localhost:9000")
+s.connect("ws://localhost:9000/ws")
 m = JoinRoomMessage(sys.argv[2], sys.argv[1], user_agent="Test Room Joiner",
         capabilities=['multi-choice'])
 s.send(m.encode())

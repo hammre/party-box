@@ -18,3 +18,6 @@ fit to do.)
 
 The Client then generates a message to the ``from`` in the message it received
 following the ``multi-choice-answer.json`` schema.
+
+Both the Game and Client can identify messages that are intended to match this
+capability by the ``question-identifier`` property.

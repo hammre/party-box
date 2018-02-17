@@ -2,6 +2,10 @@
 # requires autobahn, Twisted
 import json
 import random
+from urllib.parse import urlunsplit, quote_plus
+
+from twisted.web.resource import Resource
+from twisted.web.util import redirectTo
 
 from autobahn.twisted.websocket import WebSocketServerProtocol
 
@@ -145,8 +149,11 @@ class Broker:
                 elif p.name == data['participant-name']:
                     recipient = p
 
-            if sender is None or recipient is None:
-                print("Error, room {} could not find participants for message delivery".format(code))
+            if sender is None:
+                print("Error, room {} participant with connection {} could not be mapped to a name.".format(connection))
+                return
+            if recipient is None:
+                print("Error, room {} could not find participants {} for message delivery".format(code, data['participant-name']))
                 return
 
             if 'from' in data:
@@ -262,19 +269,77 @@ class ParticipantConnection(WebSocketServerProtocol):
         self.broker.disconnected(self)
 
 
+class RoomJoinResource(Resource):
+    isLeaf = True
+
+    def render_POST(self, request):
+        code = request.args.get(b"code", [None])[0]
+        nick = request.args.get(b"nick", [None])[0]
+        if code is None or not code:
+            print("No room code supplied")
+            return redirectTo(b"/", request)
+        else:
+            code = code.decode("utf-8").strip()
+        if nick is None:
+            print("No nickname supplied")
+            return redirectTo(b"/", request)
+        else:
+            nick = nick.decode("utf-8").strip()
+
+        if not nick or not code:
+            print("Nickname or code was empty string")
+            return redirectTo(b"/", request)
+
+        #room_url = "/room#code:{code};nick:{nick}".format(code=code, nick=nick)
+        room_url = ('', '', '/room', '', 'code:{code};nick:{nick}'.format(code=quote_plus(code), nick=quote_plus(nick)))
+        print("room_url {}".format(room_url))
+        url = urlunsplit(room_url)
+        print("url {}".format(url))
+        return redirectTo(url.encode('ascii'), request)
+
+
+class RootPage(Resource):
+    isLeaf = True
+
+    def render_GET(self, request):
+        request.responseHeaders.addRawHeader(b"Content-Type", b"text/html; charset=utf-8")
+        with open('index.html', 'rb') as idxfile:
+            return idxfile.read()
+
+    def getChild(self, name, request):
+        if name == '':
+            return self
+        else:
+            return Resource.getChild(self, name, request)
+
+
 def main():
     import sys
     from twisted.python import log
     from twisted.internet import reactor
-    log.startLogging(sys.stdout)
-
+    from twisted.web.server import Site
+    from twisted.web.static import File
+    from autobahn.twisted.resource import WebSocketResource
     from autobahn.twisted.websocket import WebSocketServerFactory
-    factory = WebSocketServerFactory()
-    factory.protocol = ParticipantConnection
+
+    log.startLogging(sys.stdout)
 
     ParticipantConnection.broker = Broker()
 
-    reactor.listenTCP(9000, factory)
+    factory = WebSocketServerFactory()
+    factory.protocol = ParticipantConnection
+
+    ws_resource = WebSocketResource(factory)
+
+    root = Resource()
+    root.putChild(b"", RootPage())
+    root.putChild(b"ws", ws_resource)
+    root.putChild(b"join", RoomJoinResource())
+    root.putChild(b"room", File('room'))
+
+    site = Site(root)
+
+    reactor.listenTCP(9000, site)
     reactor.run()
 
 if __name__ == '__main__':
