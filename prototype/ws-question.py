@@ -4,10 +4,10 @@
 import websocket
 from pprint import pprint
 import json
-from messages import CreateRoomMessage, SimpleMultiChoiceQuestion
+from messages import CreateRoomMessage, SimpleMultiChoiceQuestion, StaticMessage
 s = websocket.WebSocket()
 s.connect("ws://localhost:9000/ws")
-m = CreateRoomMessage(["multi-choice"], name="Quizmaster", user_agent="Multi-Choice prototype Game")
+m = CreateRoomMessage(["multi-choice", "static-message"], name="Quizmaster", user_agent="Multi-Choice prototype Game")
 s.send(m.encode())
 while True:
     try:
@@ -19,6 +19,8 @@ while True:
                 s.send(m.encode())
         elif msg.get('command', None) == 'participant-message':
             pprint(msg)
+            m = StaticMessage(room, msg.get('from', None), "Thank you for answering.")
+            s.send(m.encode())
         elif msg.get('command', None) == 'create-room-response':
             if msg['status'] != 0:
                 print("Error creating room: {}".format(msg))

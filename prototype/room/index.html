@@ -94,6 +94,13 @@
                     
                     var c = document.getElementById("container");
                     c.appendChild(q);
+                } else if(msg['static-message']) {
+                    var m = document.createElement("div");
+                    m.setAttribute("class", "message");
+                    m.textContent = msg['static-message'];
+                    var c = document.getElementById('container');
+                    c.innerHTML = null;
+                    c.appendChild(m);
                 }
                 
             }

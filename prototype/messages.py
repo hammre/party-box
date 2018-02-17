@@ -170,3 +170,16 @@ class SimpleMultiChoiceAnswer:
         msg['room-code'] = self.room
         msg['participant-name'] = self.participant
         return json.dumps(msg, ensure_ascii=False).encode('utf-8')
+
+class StaticMessage:
+    def __init__(self, room, participant, msg):
+        self.room = room
+        self.participant = participant
+        self.msg = msg
+
+    def encode(self):
+        msg = {"command":"participant-message"}
+        msg['room-code'] = self.room
+        msg['participant-name'] = self.participant
+        msg['static-message'] = self.msg
+        return json.dumps(msg, ensure_ascii=False).encode("utf-8")

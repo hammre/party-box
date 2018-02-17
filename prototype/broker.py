@@ -17,7 +17,7 @@ from messages import JoinRoomResponseSuccess, \
 
 class Broker:
     server_agent = "Prototype Broker"
-    client_capabilities = ['multi-choice']
+    client_capabilities = ['multi-choice', 'static-message']
     broker_capabilities = []
 
     def __init__(self):
@@ -69,7 +69,7 @@ class Broker:
                     response = CreateRoomResponseFailure(405,
                             "Room capability {} not supported by clients (or broker).".format(cap),
                             self.client_capabilities, server_agent=self.server_agent)
-                    connection.sendMessage(response_encode())
+                    connection.sendMessage(response.encode())
                     return
 
             response = CreateRoomResponseSuccess(code, data['capabilities'], server_agent=self.server_agent)
