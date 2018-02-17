@@ -23,7 +23,7 @@
         }
         console.log(fragdata);
         var title = "Room " + fragdata['code'];
-        var nickname = fragdata['nick'];
+        var nickname = decodeURIComponent(fragdata['nick']);
     
         document.getElementById("title").textContent = title;
         document.getElementById("top_title").textContent = title;
@@ -51,7 +51,7 @@
             log_object(e, "Websocket Open"); 
             socket.send( JSON.stringify({"command":"join-room", 
                                          "user-agent": "room 0.0", 
-                                         "participant-name": fragdata['nick'], 
+                                         "participant-name": nickname, 
                                          "room-code": fragdata['code']}) );
         }
 
