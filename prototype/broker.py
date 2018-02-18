@@ -208,7 +208,7 @@ class Room:
                 status_msg = {"command": "participant-status",
                         "participant-name": obj.name,
                         "room-code": self.code,
-                        "present": "connected"}
+                        "presence": "connected"}
                 participant.connection.sendMessage(json.dumps(status_msg).encode('utf-8'))
 
 
