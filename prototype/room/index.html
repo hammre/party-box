@@ -6,7 +6,12 @@
     <body>
         <h1 id="top_title">Room</h1>
         <p id="welcome">Welcome name!</p>
+        <p>Status: <span id="status"></span></p>
+        <p>Members:
+            <ul id="participants"></ul>
+        </p>
         <div id="container"></div>
+        <hr>
         <div id="eventlog">
         </div>
     </body>
@@ -24,6 +29,10 @@
         console.log(fragdata);
         var title = "Room " + fragdata['code'];
         var nickname = decodeURIComponent(fragdata['nick']);
+        var show_debug = false;
+        if(fragdata.debug) {
+            show_debug = true;
+        }
     
         document.getElementById("title").textContent = title;
         document.getElementById("top_title").textContent = title;
@@ -34,7 +43,34 @@
 
         var socket = new WebSocket(ws_uri);
 
+        var room = {
+            "code": fragdata['code'],
+            "status": null,
+            "participants": []
+        };
+
+        function show_status(socket) {
+            var status_div = document.getElementById("status");
+            if(socket.readyState == WebSocket.CONNECTING) {
+                status_div.textContent = "Connecting.";
+            } else if(socket.readyState == WebSocket.OPEN) {
+                if(room.status) {
+                    status_div.textContent = room.status;
+                } else {
+                    status_div.textContent = "Connected.";
+                }
+            } else if(socket.readyState == WebSocket.CLOSING) {
+                status_div.textContent = "Closing.";
+            } else if(socket.readyState == WebSocket.CLOSED) {
+                status_div.textContent = "Disconnected.";
+            } else {
+                status_div.textContent + "Socket state unrecognized.";
+            }
+        }
+
         function log_object(o, msg) {
+            if(!show_debug) return;
+
             var log = document.getElementById("eventlog");
             var entry = document.createElement("div");
             entry.setAttribute("class", "logentry");
@@ -46,17 +82,33 @@
             log.appendChild(entry);
         }
 
+        function update_participants() {
+            var p_elem = document.getElementById("participants");
+            p_elem.innerHTML = null;
+            for(var i in room.participants) {
+                var p = room.participants[i];
+                var n = document.createElement("li");
+                n.textContent = p.name + " (" + p.status + ")";
+                p_elem.appendChild(n);
+            }
+        }
+
 
         function onOpen(e) {
             log_object(e, "Websocket Open"); 
-            socket.send( JSON.stringify({"command":"join-room", 
+            show_status(socket);
+            var msg = {"command":"join-room", 
                                          "user-agent": "room 0.0", 
                                          "participant-name": nickname, 
-                                         "room-code": fragdata['code']}) );
+                                         "room-code": room.code};
+            log_object(msg, "Websocket SEND");
+            socket.send( JSON.stringify(msg) );
+            room.status = "Joining";
+            show_status(socket);
         }
 
         function choose_answer(qid, answer_id) {
-            socket.send(JSON.stringify({
+            var msg = {
                 "command":"participant-message",
                 "participant-name": "Quizmaster",
                 "room-code": fragdata['code'],
@@ -64,7 +116,86 @@
                 "selection": {
                     "answer-identifier": answer_id
                 }
-            }));
+            };
+            log_object(msg, "Websocket SEND");
+            socket.send(JSON.stringify(msg));
+        }
+
+        function onParticipantMessage(msg) {
+            if(msg['question-identifier']) {
+                var q = document.createElement("div");
+                q.setAttribute("class", "question");
+                var p = document.createElement("div");
+                p.textContent = msg['prompt'];
+                q.appendChild(p);
+
+                for(var i in msg['choices']) {
+                    var a = document.createElement("div");
+                    a.textContent = msg['choices'][i]['label'];
+                    a.setAttribute("data-answer-id", msg['choices'][i]['answer-identifier']);
+                    a.onclick = function(e) {
+                        choose_answer(msg['question-identifier'], 
+                            this.getAttribute("data-answer-id"));
+                        var c = document.getElementById('container');
+                        c.innerHTML = null;
+                    }
+                    q.appendChild(a);
+                }
+
+                var c = document.getElementById("container");
+                c.appendChild(q);
+            } else if(msg['static-message']) {
+                var m = document.createElement("div");
+                m.setAttribute("class", "message");
+
+                if(msg['html-text-content']) {
+                    for(var i in msg['html-text-content'])
+                        if(msg['html-text-content'][i] == 'static-message') {
+                            m.innerHTML = msg['static-message'];
+                        } else {
+                            m.textContent = msg['static-message'];
+                        }
+                } else {
+                    m.textContent = msg['static-message'];
+                }
+
+
+
+                var c = document.getElementById('container');
+                c.innerHTML = null;
+                c.appendChild(m);
+            }
+        }
+
+        function onParticipantStatus(msg) {
+            var updated = false;
+            for(var i in room.participants) {
+                var p = room.participants[i];
+                if(p.name == msg['participant-name']) {
+                    p.status = msg['presence'];
+                    updated = true;
+                }
+            }
+
+            if(!updated) {
+                room.participants.push( {
+                    "name": msg['participant-name'], 
+                    "status": msg['presence'] } );
+            }
+            update_participants();
+        }
+
+        function onJoinRoomResponse(msg) {
+            if(msg.status != 0) {
+                room.status = "Failed to join: " + msg.status + " " + msg['status-message'];
+            } else {
+                room.status = "Joined";
+                room.participants.push( {
+                    "name": nickname,
+                    "status": "connected" });
+            }
+            show_status(socket)
+            update_participants();    
         }
 
         function onMessage(e) {
@@ -72,42 +203,29 @@
             log_object(msg, "Websocket RECV");
 
             if(msg.command == "participant-message") {
-                if(msg['question-identifier']) {
-                    var q = document.createElement("div");
-                    q.setAttribute("class", "question");
-                    var p = document.createElement("div");
-                    p.textContent = msg['prompt'];
-                    q.appendChild(p);
-
-                    for(var i in msg['choices']) {
-                        var a = document.createElement("div");
-                        a.textContent = msg['choices'][i]['label'];
-                        a.setAttribute("data-answer-id", msg['choices'][i]['answer-identifier']);
-                        a.onclick = function(e) {
-                            choose_answer(msg['question-identifier'], 
-                                msg['choices'][i]['answer-identifier']);
-                            var c = document.getElementById('container');
-                            c.innerHTML = null;
-                        }
-                        q.appendChild(a);
-                    }
-                    
-                    var c = document.getElementById("container");
-                    c.appendChild(q);
-                } else if(msg['static-message']) {
-                    var m = document.createElement("div");
-                    m.setAttribute("class", "message");
-                    m.textContent = msg['static-message'];
-                    var c = document.getElementById('container');
-                    c.innerHTML = null;
-                    c.appendChild(m);
-                }
-                
+                onParticipantMessage(msg);
+            } else if(msg.command == "participant-status") {
+                onParticipantStatus(msg);
+            } else if(msg.command == 'join-room-response') {
+                onJoinRoomResponse(msg);
             }
 
         }
+
+        function onError(e) {
+            show_status(socket); 
+            log_object(e, "Websocket error");
+        }
+
+        function onClose(e) {
+            show_status(socket);
+            log_object(e, "Websocket close");
+        }
+
         socket.onmessage =  onMessage;
         socket.onopen =  onOpen;
+        socket.onerror = onError;
+        socket.onclose = onClose;
 
         
     };
