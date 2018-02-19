@@ -2,6 +2,8 @@
 <html>
     <head>
         <title id="title">Room </title>
+        <link href="style.css" rel="stylesheet">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
     </head>
     <body>
         <h1 id="top_title">Room</h1>
@@ -110,8 +112,8 @@
         function choose_answer(qid, answer_id) {
             var msg = {
                 "command":"participant-message",
-                "participant-name": "Quizmaster",
-                "room-code": fragdata['code'],
+                "participant-name": room.creator,
+                "room-code": room.code,
                 "question-identifier": qid,
                 "selection": {
                     "answer-identifier": answer_id
@@ -133,6 +135,7 @@
                     var a = document.createElement("div");
                     a.textContent = msg['choices'][i]['label'];
                     a.setAttribute("data-answer-id", msg['choices'][i]['answer-identifier']);
+                    a.setAttribute('class', 'answer');
                     a.onclick = function(e) {
                         choose_answer(msg['question-identifier'], 
                             this.getAttribute("data-answer-id"));
@@ -193,6 +196,7 @@
                 room.participants.push( {
                     "name": nickname,
                     "status": "connected" });
+                room.creator = msg['creator'];
             }
             show_status(socket)
             update_participants();    

@@ -172,14 +172,17 @@ class SimpleMultiChoiceAnswer:
         return json.dumps(msg, ensure_ascii=False).encode('utf-8')
 
 class StaticMessage:
-    def __init__(self, room, participant, msg):
+    def __init__(self, room, participant, msg, is_html=False):
         self.room = room
         self.participant = participant
         self.msg = msg
+        self.is_html = is_html
 
     def encode(self):
         msg = {"command":"participant-message"}
         msg['room-code'] = self.room
         msg['participant-name'] = self.participant
         msg['static-message'] = self.msg
+        if self.is_html:
+            msg['html-text-content'] = [ 'static-message' ]
         return json.dumps(msg, ensure_ascii=False).encode("utf-8")

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Party Box</title>
+        <link href="room/style.css" rel="stylesheet">
+        <meta name="viewport" content="width=device-width initial-scale=1.0">
+    </head>
+    </body>
+    <h1>Party Box</h1>
+    <p>Party box server</p>
+    <p>To play, enter a nickname and the room code</p>
+    {% if message %}
+    <p class="alert">{{message}}</p>
+    {% endif %}
+    <form action="join" method="POST">
+        {% if nick %}
+        <p><label for="nick">Nickname:</label><input id="nick" name="nick" value="{{nick}}"></p>
+        {% else %}
+        <p><label for="nick">Nickname:</label><input id="nick" name="nick"></p>
+        {% endif %}
+
+        {% if room_prefill %}
+        <p><label for="code">Room Code:</label><input id="code" name="code" autocomplete="off" style="text-transform:uppercase" maxlength="4" value="{{room_prefill}}"></p>
+        {% else %}
+        <p><label for="code">Room Code:</label><input id="code" name="code" autocomplete="off" style="text-transform:uppercase" maxlength="4"></p>
+        {% endif %}
+
+        <button name="join" value="join">Join</button>
+    </forM>
+    </body>
+</html>

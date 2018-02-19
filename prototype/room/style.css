@@ -1,0 +1,30 @@
+#status {
+    font-weight: bold;
+}
+
+
+.question {
+    font-weight: bold;
+    border: 1px solid black;
+}
+
+.answer {
+    background-color: white;
+    color: grey;
+}
+
+.answer:hover {
+    background-color: grey;
+    color: white;
+}
+
+.message {
+    border: 1px solid black;
+}
+
+.alert {
+    background-color: grey;
+    color: red;
+    font-weight: bold;
+    border: 2px dotted black;
+}

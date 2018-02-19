@@ -1,5 +1,5 @@
 #/usr/bin/env python3
-# requires autobahn, Twisted
+# requires autobahn, Twisted, jinja2
 import json
 import random
 from urllib.parse import urlunsplit, quote_plus
@@ -8,6 +8,8 @@ from twisted.web.resource import Resource
 from twisted.web.util import redirectTo
 
 from autobahn.twisted.websocket import WebSocketServerProtocol
+
+from jinja2 import Template
 
 from messages import JoinRoomResponseSuccess, \
                      JoinRoomResponseFailure, \
@@ -268,6 +270,16 @@ class ParticipantConnection(WebSocketServerProtocol):
         print("Connection lost from {}: ".format(self.peer, reason))
         self.broker.disconnected(self)
 
+def make_error_redirect(msg, request):
+    url = "/?message={}".format(quote_plus(msg))
+    code = request.args.get(b"code", [None])[0]
+    if code:
+        url += "&code={}".format(quote_plus(code))
+    nick = request.args.get(b'nick', [None])[0]
+    if nick:
+        url += "&nick={}".format(quote_plus(nick))
+
+    return redirectTo(url.encode('utf-8'), request)
 
 class RoomJoinResource(Resource):
     isLeaf = True
@@ -277,18 +289,25 @@ class RoomJoinResource(Resource):
         nick = request.args.get(b"nick", [None])[0]
         if code is None or not code:
             print("No room code supplied")
-            return redirectTo(b"/", request)
+            return make_error_redirect("No room code supplied!", request)
         else:
             code = code.decode("utf-8").strip()
-        if nick is None:
+        if nick is None or not nick:
             print("No nickname supplied")
-            return redirectTo(b"/", request)
+            return make_error_redirect("No nickname supplied!", request)
         else:
             nick = nick.decode("utf-8").strip()
 
         if not nick or not code:
             print("Nickname or code was empty string")
-            return redirectTo(b"/", request)
+            return make_error_redirect("Nickname or room code were empty!", request)
+
+        code = code.upper()
+        if len(nick) > 20:
+            nick = nick[:20]
+
+        if code not in ParticipantConnection.broker.rooms:
+            return make_error_redirect("Room {} does not exist".format(code), request)
 
         #room_url = "/room#code:{code};nick:{nick}".format(code=code, nick=nick)
         room_url = ('', '', '/room', '', 'code:{code};nick:{nick}'.format(code=quote_plus(code), nick=quote_plus(nick)))
@@ -303,8 +322,29 @@ class RootPage(Resource):
 
     def render_GET(self, request):
         request.responseHeaders.addRawHeader(b"Content-Type", b"text/html; charset=utf-8")
+        room_prefill = request.args.get(b'code', [None])[0]
+
+        if room_prefill is not None and room_prefill:
+            room_prefill = room_prefill.decode('utf-8')
+        else:
+            room_prefil = None
+
+        message = request.args.get(b'message', [None])[0]
+        if message is not None and message:
+            message = message.decode('utf-8')
+        else:
+            message = None
+
+        nick = request.args.get(b'nick', [None])[0]
+        if nick is not None and nick:
+            nick = nick.decode("utf-8")
+        else:
+            nick = None
+
         with open('index.html', 'rb') as idxfile:
-            return idxfile.read()
+            page = Template(idxfile.read().decode('utf-8'))
+        return page.render(room_prefill=room_prefill, message=message, nick=nick).encode('utf-8')
+        
 
     def getChild(self, name, request):
         if name == '':
